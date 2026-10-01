@@ -1,8 +1,21 @@
 # ==============================================================================
-# PROJECT: AUTOMATED VLSM NETWORK SUBNET PLANNER
-# AUTHOR: MATUTUZELA JABULANI NDLOVU
+# PROJECT: AUTOMATED ENTERPRISE VLSM NETWORK SUBNET PLANNER
+# AUTHOR: MATUTUZELA JABULANI NDLOVU (Rex-OG-Kush)
 # PURPOSE: Automatically calculates optimized subnet structures minimizing IP waste
+#          and outputs production-ready CIDR and Dotted Decimal notation.
 # ==============================================================================
+
+# Helper function to convert CIDR prefix lengths to Dotted Decimal Notation
+cidr_to_dotted_decimal <- function(cidr) {
+  mask_bits <- c(rep(1, cidr), rep(0, 32 - cidr))
+  octets <- numeric(4)
+  for (i in 1:4) {
+    start_bit <- (i - 1) * 8 + 1
+    end_bit <- i * 8
+    octets[i] <- sum(mask_bits[start_bit:end_bit] * 2^(7:0))
+  }
+  return(paste(octets, collapse = "."))
+}
 
 # Function to calculate the required host bits for a given number of usable hosts
 calculate_host_bits <- function(required_hosts) {
@@ -14,15 +27,18 @@ calculate_host_bits <- function(required_hosts) {
 
 # Core Subnetting Simulation Engine
 plan_network_subnets <- function(base_ip, departments, host_requirements) {
-  cat("=== ENTERPRISE IP ADDRESS ALLOCATION PLAN ===\n")
-  cat("Base Network Space:", base_ip, "/24\n\n")
+  cat("======================================================================\n")
+  cat("🛡️ ENTERPRISE IPv4 VARIABLE LENGTH SUBNET MASK (VLSM) PLAN\n")
+  cat("======================================================================\n")
+  cat("Base Network Allocation Perimeter:", base_ip, "/24\n\n")
   
-  # Sort requirements in descending order (Standard VLSM Rule)
+  # Sort requirements in descending order (Standard VLSM Architectural Rule)
   order_idx <- order(host_requirements, decreasing = TRUE)
   sorted_deps <- departments[order_idx]
   sorted_hosts <- host_requirements[order_idx]
   
-  current_third_octet <- 0
+  # Refactored: Properly tracking the 4th octet host space allocation
+  current_fourth_octet <- 0
   
   # Loop through sorted departments to compute addressing schemas
   for (i in 1:length(sorted_deps)) {
@@ -31,27 +47,38 @@ plan_network_subnets <- function(base_ip, departments, host_requirements) {
     subnet_size <- 2^host_bits
     cidr_mask <- 32 - host_bits
     
-    # Calculate boundaries
-    network_addr <- paste0("192.168.1.", current_third_octet)
-    first_usable <- paste0("192.168.1.", current_third_octet + 1)
-    last_usable  <- paste0("192.168.1.", current_third_octet + subnet_size - 2)
-    broadcast    <- paste0("192.168.1.", current_third_octet + subnet_size - 1)
+    # Calculate engineering dotted-decimal equivalent mask parameters
+    dotted_mask <- cidr_to_dotted_decimal(cidr_mask)
+    
+    # Enforce hard upper boundary check constraints on standard Class C bounds
+    if ((current_fourth_octet + subnet_size) > 256) {
+      cat(paste0("🚨 ALLOCATION ALERT: Subnet for '", sorted_deps[i], "' breaks /24 ceiling layout constraint limits!\n"))
+      next
+    }
+    
+    # Calculate precise binary network boundaries
+    network_addr <- paste0("192.168.1.", current_fourth_octet)
+    first_usable <- paste0("192.168.1.", current_fourth_octet + 1)
+    last_usable  <- paste0("192.168.1.", current_fourth_octet + subnet_size - 2)
+    broadcast    <- paste0("192.168.1.", current_fourth_octet + subnet_size - 1)
     
     # Calculate IP efficiency metric
     allocated_ips <- subnet_size
     efficiency <- round(((hosts_needed + 2) / allocated_ips) * 100, 1)
     
     # Output the structural breakdown for the admin team
-    cat(paste0("📍 Department: ", sorted_deps[i], "\n"))
-    cat(paste0("   - Required Hosts: ", hosts_needed, " | Allocated: ", allocated_ips, "\n"))
-    cat(paste0("   - Subnet Mask:    /", cidr_mask, "\n"))
-    cat(paste0("   - Network Range:  ", network_addr, " to ", broadcast, "\n"))
-    cat(paste0("   - Usable Range:   ", first_usable, " to ", last_usable, "\n"))
-    cat(paste0("   - IP Efficiency:  ", efficiency, "%\n\n"))
+    cat(paste0("📍 Department Profile: ", sorted_deps[i], "\n"))
+    cat(paste0("   - Core Metrics:    Required Hosts: ", hosts_needed, " | Allocated Address Pool: ", allocated_ips, "\n"))
+    cat(paste0("   - CIDR Prefix:     /", cidr_mask, "\n"))
+    cat(paste0("   - Subnet Mask:     ", dotted_mask, "\n"))
+    cat(paste0("   - Network Boundaries: ", network_addr, " -> ", broadcast, "\n"))
+    cat(paste0("   - Usable Range:    ", first_usable, " to ", last_usable, "\n"))
+    cat(paste0("   - Allocation Yield:  ", efficiency, "% Resource Efficiency\n\n"))
     
-    # Shift to the next available block boundary
-    current_third_octet <- current_third_octet + subnet_size
+    # Shift sequentially to the next valid binary network block boundary boundary
+    current_fourth_octet <- current_fourth_octet + subnet_size
   }
+  cat("======================================================================\n")
 }
 
 # Execute the planner with mock corporate structure parameters
