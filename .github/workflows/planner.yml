@@ -1,0 +1,30 @@
+name: Automated Network Subnet Generation Loop
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-plan:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Subnet Repository Code Base
+      uses: actions/checkout@v4
+
+    - name: Initialize Enterprise R Runtime Environment
+      uses: r-lib/actions/setup-r@v2
+      with:
+        use-public-rspm: true
+
+    - name: Execute Live Algorithmic VLSM Layout Planner
+      run: Rscript subnet_planner.R
+
+    - name: Upload Finished IP Addressing Blueprint
+      uses: actions/upload-artifact@v4
+      with:
+        name: enterprise-network-blueprint
+        path: network_subnet_blueprint.csv
+        retention-days: 7
